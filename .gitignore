@@ -1,0 +1,30 @@
+﻿# Build outputs
+target/
+**/target/
+build/
+**/build/
+
+# IDE configurations
+.idea/
+**/.idea/
+*.iml
+**/*.iml
+.vscode/
+**/.vscode/
+.classpath
+.project
+.settings/
+
+# Maven wrapper jar
+.mvn/wrapper/maven-wrapper.jar
+**/maven-wrapper.jar
+
+# Logs and OS files
+*.log
+**/*.log
+.DS_Store
+Thumbs.db
+
+# Database volumes
+postgres_data/
+redis_data/
