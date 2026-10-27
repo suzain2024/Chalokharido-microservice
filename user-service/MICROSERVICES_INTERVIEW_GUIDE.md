@@ -1044,6 +1044,49 @@ If an interviewer asks: *"You have Kafka between order-service and payment-servi
 
 ---
 
+### 7. Why Apache Kafka over RabbitMQ, ActiveMQ, or IBM MQ?
+
+A common senior system design interview question is: *"Why did you use Kafka instead of RabbitMQ, ActiveMQ, or IBM MQ?"*
+
+#### The Core Fundamental Difference:
+> **RabbitMQ, ActiveMQ, and IBM MQ are traditional "Message Queues" (Queue = Transient To-Do List).**  
+> **Apache Kafka is an "Append-Only Distributed Commit Log" (Log = Immutable Historical Recording).**
+
+```
+Traditional Message Queue (RabbitMQ / ActiveMQ / IBM MQ):
+[Producer] ──► [Queue (Smart Broker tracks state)] ──► [Consumer] ──► [ACK] ──► (Message DELETED from Queue!)
+
+Apache Kafka:
+[Producer] ──► [Append to Topic Log on Disk] ──► [Consumer Group Offset Pointer] (Messages Persist for 7+ Days!)
+```
+
+#### Detailed Comparison Breakdown:
+
+| Feature | Apache Kafka | RabbitMQ | ActiveMQ / IBM MQ |
+| :--- | :--- | :--- | :--- |
+| **Architectural Model** | Distributed Append-Only Commit Log | Message Broker (AMQP) | Enterprise Message Broker (JMS / XA) |
+| **Storage Philosophy** | Messages kept on disk for days (immutable) | Messages destroyed immediately after consumption | Messages destroyed immediately after consumption |
+| **Event Replayability** | **Yes** (Rewind offset pointer to replay history) | ❌ No (Cannot replay deleted messages) | ❌ No (Cannot replay deleted messages) |
+| **Throughput & Scale** | **1,000,000+ msgs/sec** (Sequential disk + Zero-Copy) | ~20,000 – 50,000 msgs/sec | ~10,000 – 40,000 msgs/sec |
+| **Multi-Service Fan-Out** | **Zero-Copy**: Written once; multiple consumer groups read same byte stream | Requires duplicating the message across multiple queues in RAM | Requires separate queues or topic subscribers |
+| **Ordering Guarantees** | **Strict FIFO per Partition Key** (`orderId`) | Ordering breaks easily with multiple concurrent consumers | FIFO queue or priority queue |
+| **Transactions** | Producer transactions & Saga eventual consistency | Local queue transactions | **Bank-Grade XA 2-Phase Commit (2PC)** across DBs |
+| **Target Use Case** | Event-Driven Microservices, Sagas, Streaming, Analytics | Complex routing, background tasks, worker pools | Core banking, insurance, IBM mainframe connections |
+
+#### When would you choose the alternatives?
+
+1. **Why Enterprise Banks still use IBM MQ:**
+   * **XA Distributed Transactions (2-Phase Commit):** Banks (JPMorgan, Citi, HSBC) need to debit an Oracle/DB2 account AND send a message across the wire atomically. If one fails, both roll back. IBM MQ supports full XA 2PC.
+   * **Mainframe Integration:** Direct legacy integration with IBM z/OS, AS/400, and COBOL applications.
+   * **Individual Message Destruction:** Regulatory compliance requiring commands to disappear permanently once processed.
+
+2. **When to choose RabbitMQ / ActiveMQ:**
+   * **Priority Queues:** VIP customer tasks that need to jump ahead of 10,000 pending tasks (Kafka cannot jump the line).
+   * **Complex Broker-Side Routing:** Dynamic routing based on headers, regex keys, and topic exchanges.
+   * **Transient Background Jobs:** Tasks like *"Generate PDF invoice"* or *"Resize avatar"* that do not require replayability.
+
+---
+
 ## 10. Distributed Caching & In-Memory Storage (Redis)
 
 ### 1. What is Redis & Why is it Mandatory in Microservices?
